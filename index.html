@@ -35,6 +35,9 @@
             fjs.parentNode.insertBefore(js, fjs);
         }(document, 'script', 'facebook-jssdk'));
 
+        function statusChangeCallback(resp) {
+            console.log(response);
+        }
 
         function checkLoginState() {
             FB.getLoginStatus(function(response) {
@@ -42,9 +45,6 @@
             });
         }
 
-        function statusChangeCallback(resp) {
-            console.log(response);
-        }
     </script>
 </body>
 </html>
