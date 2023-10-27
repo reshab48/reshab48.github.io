@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>The High Cost of a Simple Oversight: My Experience with Lambdas – Reshab Das – Devops Engineer and Web Developer</title>
+
+        <meta charset="utf-8" />
+    <meta content='text/html; charset=utf-8' http-equiv='Content-Type'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0'>
+
+    
+    <meta name="description" content="In the vast world of tech, it’s often the small things that catch us off guard. A single oversight, a minor lapse in attention, can lead to bigger consequences. I recently had one such experience which, though not catastrophic, turned out to be a valuable lesson for me.
+" />
+    <meta property="og:description" content="In the vast world of tech, it’s often the small things that catch us off guard. A single oversight, a minor lapse in attention, can lead to bigger consequences. I recently had one such experience which, though not catastrophic, turned out to be a valuable lesson for me.
+" />
+    
+    <meta name="author" content="Reshab Das" />
+
+    
+    <meta property="og:title" content="The High Cost of a Simple Oversight: My Experience with Lambdas" />
+    <meta property="twitter:title" content="The High Cost of a Simple Oversight: My Experience with Lambdas" />
+    
+
+    <!--[if lt IE 9]>
+      <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+    <link rel="alternate" type="application/rss+xml" title="Reshab Das - Devops Engineer and Web Developer" href="/feed.xml" />
+
+    <meta name="google-site-verification" content="DDG8BZDbLhTwH-hBoVipVM7T5kdQbZMgYrK72KhGR_o" />
+
+    <!-- Created with Jekyll Now - http://github.com/barryclark/jekyll-now -->
+  </head>
+
+  <body>
+    <div class="wrapper-masthead">
+      <div class="container">
+        <header class="masthead clearfix">
+          <!-- <a href="/" class="site-avatar"><img src="https://avatars.githubusercontent.com/u/17812528" /></a> -->
+
+          <div class="site-info">
+            <h1 class="site-name"><a href="/">Reshab Das</a></h1>
+            <p class="site-description">Devops Engineer and Web Developer</p>
+          </div>
+
+          <nav>
+            <a href="/">Blog</a>
+            <a href="/about">About</a>
+          </nav>
+        </header>
+      </div>
+    </div>
+
+    <div id="main" role="main" class="container">
+      <article class="post">
+  <h1>The High Cost of a Simple Oversight: My Experience with Lambdas</h1>
+
+  <div class="entry">
+    <p>In the vast world of tech, it’s often the small things that catch us off guard. A single oversight, a minor lapse in attention, can lead to bigger consequences. I recently had one such experience which, though not catastrophic, turned out to be a valuable lesson for me.</p>
+
+<h3 id="the-background"><strong>The Background</strong></h3>
+
+<p>At the heart of our operations are the converters lambdas. If you’re unfamiliar with this term, these are essentially programs that transform websites into PNG and PDF files. Traditionally, the process involved the frontend initiating a call to an asynchronous lambda, which in turn, triggers our primary lambda. This primary one then gets to work: using Puppeteer, it generates files and stores them on an S3 bucket. This design was replicated for both PNG and PDF files.</p>
+
+<h3 id="a-new-idea"><strong>A New Idea</strong></h3>
+
+<p>However, as with all things tech, there’s always room for improvement. I had the inspiration to shift our lambdas to an image-based architecture. Instead of initiating the Puppeteer browser process with each request, why not have it run continuously using PM2, a process manager? This means subsequent calls to the lambda could reuse an already ‘hot’ browser process. It was a promising theory. With our lambdas handling around 40 invocations per minute, even slight efficiencies could lead to significant time savings.</p>
+
+<p>Transitioning to this new model was relatively seamless. And while the speed improvements weren’t groundbreaking, they were still noticeable.</p>
+
+<h3 id="the-oversight"><strong>The Oversight</strong></h3>
+
+<p>But here’s where I tripped up. Initially, I intended to have just one lambda for each file type, eliminating the need for the asynchronous trigger. With a single S3 bucket catering to both our staging and production environments, we distinguished between the two using prefixes: <code class="language-plaintext highlighter-rouge">staging/</code> and <code class="language-plaintext highlighter-rouge">production/</code>. Due to some unforeseen technical hitches involving SQS events and queue congestion, I reverted to using the asynchronous lambda.</p>
+
+<p>The problem? I inadvertently duplicated the prefixes, leading to paths like <code class="language-plaintext highlighter-rouge">staging/staging/</code> and <code class="language-plaintext highlighter-rouge">production/production/</code>.</p>
+
+<h3 id="the-fix-and-its-price"><strong>The Fix and Its Price</strong></h3>
+
+<p>To set things right, we had to transfer files from the erroneous prefix to the correct one. The data transfer alone cost us $10. Add to that the developer hours spent in resolving this, and we were looking at an expense of around $250.</p>
+
+<p>While the monetary cost might seem modest, it’s important to remember that this could’ve escalated had it not been for my diligent team, who caught the mistake early. We were looking at around 500,000 files; a number that could’ve grown exponentially if unchecked.</p>
+
+<h3 id="in-conclusion"><strong>In Conclusion</strong></h3>
+
+<p>In the intricate dance of code and infrastructure, missteps can happen. What’s important is to learn from them, stay vigilant, and always, <em>always</em> double-check even the ‘minor’ changes we make. The world of tech is as unforgiving as it is exciting, but it’s these experiences that shape us into better professionals.</p>
+
+  </div>
+
+  <div class="date">
+    Written on October 27, 2023
+  </div>
+
+  
+</article>
+
+    </div>
+
+    <div class="wrapper-footer">
+      <div class="container">
+        <footer class="footer">
+          
+
+
+
+<a href="https://github.com/reshab48"><i class="svg-icon github"></i></a>
+
+<a href="https://www.linkedin.com/in/reshab-das-a61a6311b"><i class="svg-icon linkedin"></i></a>
+
+
+<a href="https://www.twitter.com/rdas_dev"><i class="svg-icon twitter"></i></a>
+
+
+
+        </footer>
+      </div>
+    </div>
+
+    
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-05YKTQ9TZW"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+
+		gtag('config', 'G-05YKTQ9TZW');
+	</script>
+
+
+  </body>
+</html>
