@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Setting up Prometheus and Grafana on Kubernetes: A Beginner’s Guide – Reshab Das – Devops Engineer and Web Developer</title>
+
+        <meta charset="utf-8" />
+    <meta content='text/html; charset=utf-8' http-equiv='Content-Type'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0'>
+
+    
+    <meta name="description" content="In this blog post, I’ll share my experience on setting up a monitoring stack with Prometheus and Grafana on Kubernetes. This setup assumes you have:
+" />
+    <meta property="og:description" content="In this blog post, I’ll share my experience on setting up a monitoring stack with Prometheus and Grafana on Kubernetes. This setup assumes you have:
+" />
+    
+    <meta name="author" content="Reshab Das" />
+
+    
+    <meta property="og:title" content="Setting up Prometheus and Grafana on Kubernetes: A Beginner’s Guide" />
+    <meta property="twitter:title" content="Setting up Prometheus and Grafana on Kubernetes: A Beginner’s Guide" />
+    
+
+    <!--[if lt IE 9]>
+      <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+    <link rel="alternate" type="application/rss+xml" title="Reshab Das - Devops Engineer and Web Developer" href="/feed.xml" />
+
+    <meta name="google-site-verification" content="DDG8BZDbLhTwH-hBoVipVM7T5kdQbZMgYrK72KhGR_o" />
+
+    <!-- Created with Jekyll Now - http://github.com/barryclark/jekyll-now -->
+  </head>
+
+  <body>
+    <div class="wrapper-masthead">
+      <div class="container">
+        <header class="masthead clearfix">
+          <!-- <a href="/" class="site-avatar"><img src="https://avatars.githubusercontent.com/u/17812528" /></a> -->
+
+          <div class="site-info">
+            <h1 class="site-name"><a href="/">Reshab Das</a></h1>
+            <p class="site-description">Devops Engineer and Web Developer</p>
+          </div>
+
+          <nav>
+            <a href="/">Blog</a>
+            <a href="/about">About</a>
+          </nav>
+        </header>
+      </div>
+    </div>
+
+    <div id="main" role="main" class="container">
+      <article class="post">
+  <h1>Setting up Prometheus and Grafana on Kubernetes: A Beginner’s Guide</h1>
+
+  <div class="entry">
+    <p>In this blog post, I’ll share my experience on setting up a monitoring stack with Prometheus and Grafana on Kubernetes. This setup assumes you have:</p>
+
+<ul>
+  <li>Basic knowledge of Kubernetes and its components. If you’re new to Kubernetes, I recommend starting with the <a href="https://kubernetes.io/docs/tutorials/kubernetes-basics/">official Kubernetes basics tutorial</a>.</li>
+  <li>A Kubernetes cluster with ingress set up, either on the cloud (e.g., AWS EKS) or locally using Minikube. For AWS EKS setup, refer to the <a href="https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html">Amazon EKS User Guide</a>, and for Minikube, check the <a href="https://minikube.sigs.k8s.io/docs/start/">Minikube Getting Started Guide</a>.</li>
+  <li>Helm (version 3.14 or higher) installed. See the <a href="https://helm.sh/docs/intro/install/">Helm installation guide</a>.</li>
+  <li>kubectl (version 1.25 or higher) installed. Installation instructions can be found on the <a href="https://kubernetes.io/docs/tasks/tools/install-kubectl/">official kubectl installation page</a>.</li>
+</ul>
+
+<h3 id="deploying-the-monitoring-stack">Deploying the Monitoring Stack</h3>
+
+<p>We’ll be using the kube-prometheus-stack, a collection of Kubernetes resources essential for setting up monitoring. The components include:</p>
+
+<ul>
+  <li><strong>Prometheus:</strong> For collecting and storing metrics as per PromQL.</li>
+  <li><strong>Grafana:</strong> For visualizing Prometheus metrics.</li>
+  <li><strong>kube-state-metrics:</strong> Exports metrics from the Kubernetes API.</li>
+  <li><strong>Prometheus Node Exporter:</strong> Exports hardware and OS metrics exposed by *NIX kernels.</li>
+</ul>
+
+<p>These components are all packaged together in the kube-prometheus-stack helm chart, which can be found in its <a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">GitHub repository</a> and is part of the larger <a href="https://github.com/prometheus-operator/kube-prometheus">kube-prometheus project</a>.</p>
+
+<h3 id="installation-instructions">Installation Instructions</h3>
+
+<ol>
+  <li><strong>Add the Helm repository:</strong>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Install the stack:</strong>
+It’s recommended to use a separate namespace for monitoring tools:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install</span> <span class="o">[</span>RELEASE_NAME] prometheus-community/kube-prometheus-stack <span class="nt">--namespace</span> monitoring
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Configure custom values:</strong>
+Customize the installation by modifying the <code class="language-plaintext highlighter-rouge">values.yaml</code> file. Here are some suggested values:
+    <div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">grafana</span><span class="pi">:</span>
+ <span class="na">defaultDashboardsEditable</span><span class="pi">:</span> <span class="kc">false</span>
+ <span class="na">initChownData</span><span class="pi">:</span>
+   <span class="na">enabled</span><span class="pi">:</span> <span class="kc">false</span>
+ <span class="na">serviceMonitor</span><span class="pi">:</span>
+   <span class="na">labels</span><span class="pi">:</span>
+     <span class="na">release</span><span class="pi">:</span> <span class="s">kube-prometheus-stack</span>
+ <span class="na">resources</span><span class="pi">:</span>
+   <span class="na">limits</span><span class="pi">:</span>
+     <span class="na">cpu</span><span class="pi">:</span> <span class="s">300m</span>
+     <span class="na">memory</span><span class="pi">:</span> <span class="s">400Mi</span>
+   <span class="na">requests</span><span class="pi">:</span>
+     <span class="na">cpu</span><span class="pi">:</span> <span class="s">200m</span>
+     <span class="na">memory</span><span class="pi">:</span> <span class="s">300Mi</span>
+ <span class="na">persistence</span><span class="pi">:</span>
+   <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
+   <span class="na">type</span><span class="pi">:</span> <span class="s">sts</span>
+   <span class="na">storageClassName</span><span class="pi">:</span> <span class="s">gp2</span>
+   <span class="na">accessModes</span><span class="pi">:</span>
+     <span class="pi">-</span> <span class="s">ReadWriteOnce</span>
+   <span class="na">size</span><span class="pi">:</span> <span class="s">128Gi</span>
+   <span class="na">finalizers</span><span class="pi">:</span>
+     <span class="pi">-</span> <span class="s">kubernetes.io/pvc-protection</span>
+ <span class="na">adminPassword</span><span class="pi">:</span> <span class="s2">"</span><span class="s">some-secret-password"</span>
+
+<span class="na">kubeControllerManager</span><span class="pi">:</span>
+ <span class="na">enabled</span><span class="pi">:</span> <span class="kc">false</span>
+
+<span class="na">kubeEtcd</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">false</span>
+
+<span class="na">kubeScheduler</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">false</span>
+
+<span class="na">kube-state-metrics</span><span class="pi">:</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">50m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">120Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">20m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">70Mi</span>
+  <span class="na">prometheus</span><span class="pi">:</span>
+    <span class="na">monitor</span><span class="pi">:</span>
+      <span class="na">relabelings</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="na">sourceLabels</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">__meta_kubernetes_pod_container_name</span><span class="pi">]</span>
+          <span class="na">targetLabel</span><span class="pi">:</span> <span class="s">container</span>
+          <span class="na">replacement</span><span class="pi">:</span> <span class="s">$1</span>
+          <span class="na">action</span><span class="pi">:</span> <span class="s">replace</span>
+        <span class="pi">-</span> <span class="na">sourceLabels</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">__meta_kubernetes_pod_container_image</span><span class="pi">]</span>
+          <span class="na">targetLabel</span><span class="pi">:</span> <span class="s">image</span>
+          <span class="na">replacement</span><span class="pi">:</span> <span class="s">$1</span>
+          <span class="na">action</span><span class="pi">:</span> <span class="s">replace</span>
+
+<span class="na">prometheusOperator</span><span class="pi">:</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">300m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">500Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">200m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">400Mi</span>
+
+<span class="na">prometheus</span><span class="pi">:</span>
+  <span class="na">serviceMonitor</span><span class="pi">:</span>
+    <span class="na">relabelings</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">targetLabel</span><span class="pi">:</span> <span class="s">cluster</span>
+        <span class="na">replacement</span><span class="pi">:</span> <span class="s2">"</span><span class="s">ergeon-eks-staging"</span>
+        <span class="na">action</span><span class="pi">:</span> <span class="s">replace</span>
+  <span class="na">prometheusSpec</span><span class="pi">:</span>
+    <span class="na">retention</span><span class="pi">:</span> <span class="s">30d</span>
+    <span class="na">resources</span><span class="pi">:</span>
+      <span class="na">limits</span><span class="pi">:</span>
+        <span class="na">cpu</span><span class="pi">:</span> <span class="s">500m</span>
+        <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1700Mi"</span>
+      <span class="na">requests</span><span class="pi">:</span>
+        <span class="na">cpu</span><span class="pi">:</span> <span class="s">200m</span>
+        <span class="na">memory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1500Mi"</span>
+    <span class="na">storageSpec</span><span class="pi">:</span>
+      <span class="na">volumeClaimTemplate</span><span class="pi">:</span>
+        <span class="na">spec</span><span class="pi">:</span>
+          <span class="na">storageClassName</span><span class="pi">:</span> <span class="s">gp2</span>
+          <span class="na">accessModes</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">ReadWriteOnce"</span><span class="pi">]</span>
+          <span class="na">resources</span><span class="pi">:</span>
+            <span class="na">requests</span><span class="pi">:</span>
+              <span class="na">storage</span><span class="pi">:</span> <span class="s">256Gi</span>
+
+<span class="na">prometheus-node-exporter</span><span class="pi">:</span>
+  <span class="na">resources</span><span class="pi">:</span>
+    <span class="na">limits</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">100m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">100Mi</span>
+    <span class="na">requests</span><span class="pi">:</span>
+      <span class="na">cpu</span><span class="pi">:</span> <span class="s">50m</span>
+      <span class="na">memory</span><span class="pi">:</span> <span class="s">50Mi</span>
+</code></pre></div>    </div>
+
+    <p>Save these configurations in a file named <code class="language-plaintext highlighter-rouge">custom_values.yaml</code> and apply them during installation:</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>helm <span class="nb">install </span>kube-prometheus-stack prometheus-community/kube-prometheus-stack <span class="nt">--namespace</span> monitoring <span class="nt">-f</span> custom_values.yaml
+</code></pre></div>    </div>
+  </li>
+  <li><strong>Verify the installation:</strong>
+Check the status of the deployed pods:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl get pods <span class="nt">-n</span> monitoring
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<h3 id="setting-up-ingress">Setting Up Ingress</h3>
+
+<p>To access Grafana through a web browser, set up an ingress resource. Below is an example of an ingress configuration using the NGINX ingress controller:</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">apiVersion</span><span class="pi">:</span> <span class="s">networking.k8s.io/v1</span>
+<span class="na">kind</span><span class="pi">:</span> <span class="s">Ingress</span>
+<span class="na">metadata</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">ingress-monitoring</span>
+  <span class="na">namespace</span><span class="pi">:</span> <span class="s">monitoring</span>
+  <span class="na">annotations</span><span class="pi">:</span>
+    <span class="na">nginx.ingress.kubernetes.io/ssl-redirect</span><span class="pi">:</span> <span class="s2">"</span><span class="s">true"</span>
+<span class="na">spec</span><span class="pi">:</span>
+  <span class="na">tls</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">hosts</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s2">"</span><span class="s">monitoring.your-domain.com"</span>
+      <span class="na">secretName</span><span class="pi">:</span> <span class="s">monitoring-secret</span>
+  <span class="na">rules</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">host</span><span class="pi">:</span> <span class="s2">"</span><span class="s">monitoring.your-domain.com"</span>
+      <span class="na">http</span><span class="pi">:</span>
+        <span class="na">paths</span><span class="pi">:</span>
+          <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">/</span>
+            <span class="na">pathType</span><span class="pi">:</span> <span class="s">Prefix</span>
+            <span class="na">backend</span><span class="pi">:</span>
+              <span class="na">service</span><span class="pi">:</span>
+                <span class="na">name</span><span class="pi">:</span> <span class="s">kube-prometheus-stack-grafana</span>
+                <span class="na">port</span><span class="pi">:</span>
+                  <span class="na">number</span><span class="pi">:</span> <span class="m">80</span>
+</code></pre></div></div>
+<p>Apply this configuration using:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl apply <span class="nt">-f</span> ingress.yaml
+</code></pre></div></div>
+
+<h3 id="accessing-grafana">Accessing Grafana</h3>
+
+<p>Once the ingress is successfully deployed, access your Grafana dashboard by navigating to <code class="language-plaintext highlighter-rouge">https://monitoring.your-domain.com</code>. Log in using the admin credentials set in the <code class="language-plaintext highlighter-rouge">values.yaml</code> file. The default username is <code class="language-plaintext highlighter-rouge">admin</code>, and the password will be the one you set as <code class="language-plaintext highlighter-rouge">some-secret-password</code>.</p>
+
+<h3 id="visualizing-metrics">Visualizing Metrics</h3>
+
+<p>After logging in, you will be redirected to the Grafana dashboard, where you can:</p>
+
+<ul>
+  <li><strong>Explore Metrics:</strong> Use the Explore tab to query the data stored by Prometheus and visualize metrics.</li>
+  <li><strong>Manage Dashboards:</strong> You can create new dashboards or import existing ones to better visualize various metrics.</li>
+  <li><strong>Configure Data Sources:</strong> Ensure that Prometheus is set as the default data source so that Grafana can fetch and display metrics seamlessly.</li>
+  <li><strong>User Management:</strong> Update permissions, add or remove users, and customize their roles within Grafana.</li>
+</ul>
+
+<h3 id="next-steps">Next Steps</h3>
+
+<p>To further enhance your monitoring capabilities, consider implementing the following:</p>
+
+<ul>
+  <li><strong>Import Custom Dashboards:</strong> Grafana allows you to import dashboards which can be found on <a href="https://grafana.com/grafana/dashboards">Grafana Labs’ official site</a>. These dashboards are tailored for various use cases and data sources.</li>
+  <li><strong>Third-Party Metrics Exporters:</strong> Integrate exporters for application-level metrics, such as those for databases, hardware, or custom applications. This enriches the insights you can gain from your cluster.</li>
+  <li><strong>Alerting:</strong> Set up alerts in Grafana or Prometheus to be notified about critical conditions. Alertmanager can handle alerts sent by client applications such as the Prometheus server.</li>
+  <li><strong>Horizontal Pod Autoscaling (HPA):</strong> Utilize Prometheus metrics to automatically scale your applications based on observed metrics like CPU usage or custom metrics.</li>
+</ul>
+
+<h3 id="conclusion">Conclusion</h3>
+
+<p>Setting up Prometheus and Grafana on Kubernetes using Helm charts is a straightforward way to get a robust monitoring solution up and running. This setup not only helps in observing the state of your clusters but also aids in proactive management through metrics analysis.</p>
+
+  </div>
+
+  <div class="date">
+    Written on July 11, 2024
+  </div>
+
+  
+</article>
+
+    </div>
+
+    <div class="wrapper-footer">
+      <div class="container">
+        <footer class="footer">
+          
+
+
+
+<a href="https://github.com/reshab48"><i class="svg-icon github"></i></a>
+
+<a href="https://www.linkedin.com/in/reshab-das-a61a6311b"><i class="svg-icon linkedin"></i></a>
+
+
+<a href="https://www.twitter.com/rdas_dev"><i class="svg-icon twitter"></i></a>
+
+
+
+        </footer>
+      </div>
+    </div>
+
+    
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-05YKTQ9TZW"></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag(){dataLayer.push(arguments);}
+		gtag('js', new Date());
+
+		gtag('config', 'G-05YKTQ9TZW');
+	</script>
+
+
+  </body>
+</html>
